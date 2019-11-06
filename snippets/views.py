@@ -3,6 +3,7 @@ from django.http import  HttpResponse,JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.parsers import JSONParser
 from rest_framework.response import  Response
+from rest_framework.decorators import action
 from snippets.models import Snippet
 from snippets.serializers import SnippetSerializer,UserSerializer
 from django.http import Http404
@@ -16,6 +17,7 @@ from django.contrib.auth.models import  User
 from rest_framework import  renderers
 from snippets.permissions import  IsOwnerOrReadOnly
 
+from rest_framework import viewsets
 from rest_framework.reverse import reverse
 @api_view(['GET'])
 
@@ -26,53 +28,81 @@ def api_root(request, format=None):
         'snippets': reverse('snippet-list', request=request, format=format)
     })
   
+#
+# class SnippetHighlight(generics.GenericAPIView):
+#     queryset = Snippet.objects.all()
+#     renderer_classes = [renderers.StaticHTMLRenderer]
+#     def get(self,request,*args,**kwargs):
+#         snippet = self.get_object()
+#         return Response(snippet.highlighted)
 
-class SnippetHighlight(generics.GenericAPIView):
+# class UserList(generics.ListAPIView):
+#     queryset =  User.objects.all()
+#     serializer_class = UserSerializer
+#
+#
+# class UserDetail(generics.RetrieveAPIView):
+#     queryset =User.objects.all()
+#     serializer_class = UserSerializer
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    This viewset automatically provides `list` and `detail` actions.
+    """
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+
+
+class SnippetViewSet(viewsets.ModelViewSet):
+    """
+        This viewset automatically provides `list`, `create`,`retrieve`,
+        `update` and `destory` actions.
+        Additionally we also provide an extra `highlight` action.
+    """
     queryset = Snippet.objects.all()
-    renderer_classes = [renderers.StaticHTMLRenderer]
-    def get(self,request,*args,**kwargs):
+    serializer_class = SnippetSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly,IsOwnerOrReadOnly]
+    @action(detail=True,renderer_classes=[renderers.StaticHTMLRenderer])
+    def highlight(self,request,*args,**kwargs):
         snippet = self.get_object()
         return Response(snippet.highlighted)
 
-class UserList(generics.ListAPIView):
-    queryset =  User.objects.all()
-    serializer_class = UserSerializer
-
-
-class UserDetail(generics.RetrieveAPIView):
-    queryset =User.objects.all()
-    serializer_class = UserSerializer
-
-    
-class SnippetList(generics.ListCreateAPIView):
-    queryset = Snippet.objects.all()
-    serializer_class = SnippetSerializer
-    permissions_classes = [permissions.IsAuthenticatedOrReadOnly]
-    
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        content = {'error_message': "用户必须登陆！！"}
-        if self.request.user.username == '':
-            return Response(content, status=status.HTTP_403_FORBIDDEN, )
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        
     def perform_create(self, serializer):
-        # owner=self.request.user
-        # if owner.username == '':
-        #     print("匿名用户！！")
-        #
-        #     return "403"
         serializer.save(owner=self.request.user)
-
-class SnippetDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Snippet.objects.all()
-    serializer_class = SnippetSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    
+    
 
     
-#https://www.django-rest-framework.org/tutorial/3-class-based-views/
+# class SnippetList(generics.ListCreateAPIView):
+#     queryset = Snippet.objects.all()
+#     serializer_class = SnippetSerializer
+#     permissions_classes = [permissions.IsAuthenticatedOrReadOnly]
+#
+#     def create(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         content = {'error_message': "用户必须登陆！！"}
+#         if self.request.user.username == '':
+#             return Response(content, status=status.HTTP_403_FORBIDDEN, )
+#         self.perform_create(serializer)
+#         headers = self.get_success_headers(serializer.data)
+#         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+#     def perform_create(self, serializer):
+#         # owner=self.request.user
+#         # if owner.username == '':
+#         #     print("匿名用户！！")
+#         #
+#         #     return "403"
+#         serializer.save(owner=self.request.user)
+#
+# class SnippetDetail(generics.RetrieveUpdateDestroyAPIView):
+#     queryset = Snippet.objects.all()
+#     serializer_class = SnippetSerializer
+#     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+
+
 
 
 
@@ -108,12 +138,12 @@ class SnippetDetail(generics.RetrieveUpdateDestroyAPIView):
 #         return self.update(request,*args,**kwargs)
 #     def delete(self,request,*args,**kwargs):
 #        return self.destroy(request,*args,**kwargs)
-    
-    
-    
 
-    
-    
+
+
+
+
+
 # class SnippetList(APIView):
 #     """
 #     List all snippets, or create a new snippet
@@ -158,8 +188,8 @@ class SnippetDetail(generics.RetrieveUpdateDestroyAPIView):
 #         snippet.delete()
 #         return Response(status=status.HTTP_204_NO_CONTENT)
 #
-    
-    
+
+
 
 
 
@@ -265,26 +295,26 @@ class SnippetDetail(generics.RetrieveUpdateDestroyAPIView):
 #     elif request.method == 'DELETE':
 #         snippet.delete()
 #         return HttpResponse(status=204)
-    
-    
-        
-        
-        
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-        
-        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
